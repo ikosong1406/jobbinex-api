@@ -100,24 +100,18 @@ const userSchema = new Schema(
       type: String, // URL link to the CV/Resume file (e.g., stored on S3 or Firebase)
       default: null,
     },
-    preferredIndustries: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    preferredRoles: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    preferredLocations: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    preferredIndustries: {
+      type: String, // **NOW A SINGLE STRING**
+      default: null, // **SET DEFAULT TO NULL**
+    },
+    preferredRoles: {
+      type: String, // **NOW A SINGLE STRING**
+      default: null, // **SET DEFAULT TO NULL**
+    },
+    preferredLocations: {
+      type: String, // **NOW A SINGLE STRING**
+      default: null, // **SET DEFAULT TO NULL**
+    },
   },
   {
     // Mongoose will automatically manage 'createdAt' and 'updatedAt' fields

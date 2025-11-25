@@ -41,24 +41,46 @@ router.patch("/", async (req, res) => {
       jobEmail,
       jobPassword,
       cv,
+      preferredIndustries, // Keep the old field name from frontend
+      preferredRoles, // Keep the old field name from frontend
+      preferredLocations, // Keep the old field name from frontend
+      phonenumber,
+    } = req.body;
+
+    console.log("Received update data:", {
       preferredIndustries,
       preferredRoles,
       preferredLocations,
-      phonenumber, // Added phone number in case it's editable
-    } = req.body;
+      jobEmail,
+      jobPassword,
+      cv,
+    });
 
-    // Create update object with only the fields that are provided
+    // Create update object with proper string handling
     const updateFields = {};
 
     if (jobEmail !== undefined) updateFields.jobEmail = jobEmail;
     if (jobPassword !== undefined) updateFields.jobPassword = jobPassword;
     if (cv !== undefined) updateFields.cv = cv;
-    if (preferredIndustries !== undefined)
-      updateFields.preferredIndustries = preferredIndustries;
-    if (preferredRoles !== undefined)
-      updateFields.preferredRoles = preferredRoles;
-    if (preferredLocations !== undefined)
-      updateFields.preferredLocations = preferredLocations;
+
+    // Handle string fields - map frontend field names to schema field names
+    if (preferredIndustries !== undefined) {
+      updateFields.preferredIndustries =
+        typeof preferredIndustries === "string"
+          ? preferredIndustries.trim()
+          : "";
+    }
+
+    if (preferredRoles !== undefined) {
+      updateFields.preferredRoles =
+        typeof preferredRoles === "string" ? preferredRoles.trim() : "";
+    }
+
+    if (preferredLocations !== undefined) {
+      updateFields.preferredLocations =
+        typeof preferredLocations === "string" ? preferredLocations.trim() : "";
+    }
+
     if (phonenumber !== undefined) updateFields.phonenumber = phonenumber;
 
     // Check if there are any fields to update
@@ -71,18 +93,17 @@ router.patch("/", async (req, res) => {
       userId,
       { $set: updateFields },
       {
-        new: true, // Return the updated document
-        runValidators: true, // Run schema validators
+        new: true,
+        runValidators: true,
       }
     )
-      .select("-password") // Exclude password from response
+      .select("-password")
       .exec();
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Return the updated user data (without sensitive fields)
     res.status(200).json({
       message: "Profile updated successfully",
       user: updatedUser,
@@ -90,15 +111,15 @@ router.patch("/", async (req, res) => {
   } catch (error) {
     console.error("Error updating user profile:", error);
 
-    // Handle validation errors
+    // More detailed error logging
     if (error.name === "ValidationError") {
+      console.error("Validation errors:", error.errors);
       return res.status(400).json({
         message: "Validation error",
         errors: Object.values(error.errors).map((err) => err.message),
       });
     }
 
-    // Handle duplicate key errors (if any unique fields)
     if (error.code === 11000) {
       return res.status(400).json({
         message: "Duplicate field value entered",
@@ -107,6 +128,7 @@ router.patch("/", async (req, res) => {
 
     res.status(500).json({
       message: "Server error while updating profile",
+      error: error.message, // Include error message for debugging
     });
   }
 });
