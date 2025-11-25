@@ -10,6 +10,7 @@ import reset from "./routes/reset.js";
 import profile from "./routes/profile.js";
 import checkout from "./routes/checkout.js";
 import subscribe from "./routes/subscribe.js";
+import createConv from "./routes/createConv.js";
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use("/reset", reset);
 router.use("/profile", profile);
 router.use("/checkout", checkout);
 router.use("/subscribe", subscribe);
+router.use("/createConv", createConv);
 
 export default router;
