@@ -21,7 +21,8 @@ const PLANS = {
   Starter: {
     price_data: {
       currency: "gbp",
-      unit_amount: 4999, // £49.99
+      // unit_amount: 4999, // £49.99
+      unit_amount: 100,
       product_data: {
         name: "Starter One-Time Access",
         description: "One-time fee for Starter benefits.",
@@ -121,10 +122,6 @@ router.post("/", async (req, res) => {
       allow_promotion_codes: true,
       // Removed: subscription_data field
     });
-
-    console.log(
-      `Checkout session created for user ${userId} for one-time payment of plan ${planName}`
-    );
 
     res.status(200).json({
       sessionId: session.id,

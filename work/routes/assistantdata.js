@@ -68,12 +68,7 @@ router.get("/", async (req, res) => {
       .populate({
         path: "messages",
         model: Message,
-        // Nested population to show the latest message in the conversation thread
-        populate: {
-          path: "messages",
-          model: "Message",
-          options: { limit: 1, sort: { createdAt: -1 } },
-        },
+        options: { sort: { createdAt: -1 } },
       })
       .exec(); // Execute the query
 
