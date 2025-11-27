@@ -28,11 +28,6 @@ const jobSchema = new Schema(
       type: String,
       trim: true,
       default: null,
-      // Basic validation for URL format
-      match: [
-        /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
-        "Please enter a valid URL.",
-      ],
     },
     jobSource: {
       type: String,
