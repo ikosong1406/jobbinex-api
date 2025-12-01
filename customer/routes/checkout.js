@@ -21,8 +21,8 @@ const PLANS = {
   Starter: {
     price_data: {
       currency: "gbp",
-      // unit_amount: 4999, // £49.99
-      unit_amount: 100, // £1.00 for testing
+      unit_amount: 4999, // £49.99
+      // unit_amount: 100, // £1.00 for testing
       product_data: {
         name: "Starter One-Time Access",
         description: "One-time fee for Starter benefits.",
