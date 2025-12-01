@@ -110,8 +110,8 @@ router.post("/", async (req, res) => {
       mode: "payment",
 
       // The rest of the URLs and metadata remain helpful
-      success_url: `${CLIENT_URL}/profile?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${CLIENT_URL}/profile?canceled=true`,
+      success_url: `${CLIENT_URL}/customer/activate?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${CLIENT_URL}/customer/profile?canceled=true`,
       customer_email: user.email,
       client_reference_id: userId.toString(),
       metadata: {

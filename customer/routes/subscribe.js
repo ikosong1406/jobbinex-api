@@ -2,11 +2,13 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 import jwt from "jsonwebtoken";
+import Stripe from "stripe";
 import { User } from "../models/user.schema.js";
 import { Assistant } from "../../work/models/assistant.schema.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // POST endpoint to activate user subscription and assign assistant
 router.post("/", async (req, res) => {
@@ -14,29 +16,86 @@ router.post("/", async (req, res) => {
   let userId;
 
   // JWT Verification
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
     try {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, JWT_SECRET);
       userId = decoded.id;
     } catch (error) {
       console.error("Token verification failed:", error.message);
-      return res.status(401).json({ message: "Not authorized, token failed or expired." });
+      return res
+        .status(401)
+        .json({ message: "Not authorized, token failed or expired." });
     }
   }
 
   if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token provided." });
+    return res
+      .status(401)
+      .json({ message: "Not authorized, no token provided." });
   }
 
   try {
-    const { planName } = req.body;
+    let planName;
+
+    // NEW: Check if we have a sessionId from Stripe
+    if (req.body.sessionId) {
+      // Verify the Stripe payment
+      const session = await stripe.checkout.sessions.retrieve(
+        req.body.sessionId
+      );
+
+      // Check if payment was successful
+      if (session.payment_status !== "paid") {
+        return res.status(400).json({
+          message: "Payment not completed. Please complete payment first.",
+        });
+      }
+
+      // Get plan name from Stripe metadata
+      planName = session.metadata?.planName;
+
+      if (!planName) {
+        return res.status(400).json({
+          message: "Could not determine subscription plan from payment.",
+        });
+      }
+
+      console.log(
+        `Payment verified for session ${req.body.sessionId}, plan: ${planName}`
+      );
+    }
+    // OLD: Still support direct planName for testing
+    else if (req.body.planName) {
+      planName = req.body.planName;
+    } else {
+      return res.status(400).json({
+        message: "Either sessionId or planName is required",
+      });
+    }
 
     // Validate plan name
     if (!planName || !["Starter", "Professional", "Elite"].includes(planName)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: "Invalid plan name",
-        validPlans: ["Starter", "Professional", "Elite"]
+        validPlans: ["Starter", "Professional", "Elite"],
+      });
+    }
+
+    // Check if user already has an active subscription
+    const existingUser = await User.findById(userId);
+    if (
+      existingUser &&
+      existingUser.plan &&
+      existingUser.plan.expiresAt > new Date()
+    ) {
+      return res.status(400).json({
+        message: "You already have an active subscription",
+        currentPlan: existingUser.plan.name,
+        expiresAt: existingUser.plan.expiresAt,
       });
     }
 
@@ -48,23 +107,25 @@ router.post("/", async (req, res) => {
     const availableAssistants = await Assistant.find({
       $or: [
         { clients: { $size: 0 } }, // Assistants with no clients
-        { 
+        {
           clients: { $not: { $size: 0 } }, // Assistants with clients
-          $expr: { $lt: [{ $size: "$clients" }, 10] } // But less than 10 clients (load balancing)
-        }
-      ]
+          $expr: { $lt: [{ $size: "$clients" }, 10] }, // But less than 10 clients (load balancing)
+        },
+      ],
     }).select("_id clients firstname lastname");
 
     if (availableAssistants.length === 0) {
-      return res.status(503).json({ 
-        message: "No assistants available at the moment. Please try again later." 
+      return res.status(503).json({
+        message:
+          "No assistants available at the moment. Please try again later.",
       });
     }
 
     // Select a random assistant for load balancing
-    const randomAssistant = availableAssistants[
-      Math.floor(Math.random() * availableAssistants.length)
-    ];
+    const randomAssistant =
+      availableAssistants[
+        Math.floor(Math.random() * availableAssistants.length)
+      ];
 
     // Start a transaction to update both user and assistant
     const session = await User.startSession();
@@ -75,19 +136,20 @@ router.post("/", async (req, res) => {
         // Update user with new plan and assigned assistant
         const updatedUser = await User.findByIdAndUpdate(
           userId,
-          { 
-            $set: { 
+          {
+            $set: {
               plan: {
                 name: planName,
-                expiresAt: expiresAt
+                expiresAt: expiresAt,
+                activatedAt: new Date(),
               },
-              assistant: randomAssistant._id
-            } 
+              assistant: randomAssistant._id,
+            },
           },
-          { 
+          {
             new: true,
             runValidators: true,
-            session
+            session,
           }
         ).select("-password");
 
@@ -98,14 +160,14 @@ router.post("/", async (req, res) => {
         // Add user to assistant's clients array
         await Assistant.findByIdAndUpdate(
           randomAssistant._id,
-          { 
-            $addToSet: { 
-              clients: userId 
-            } 
+          {
+            $addToSet: {
+              clients: userId,
+            },
           },
-          { 
+          {
             session,
-            new: true 
+            new: true,
           }
         );
 
@@ -116,34 +178,42 @@ router.post("/", async (req, res) => {
             _id: randomAssistant._id,
             firstname: randomAssistant.firstname,
             lastname: randomAssistant.lastname,
-            specialization: randomAssistant.specialization
-          }
+            specialization: randomAssistant.specialization,
+          },
         };
       });
     } finally {
       session.endSession();
     }
 
-    console.log(`Subscription activated for user ${userId} with plan ${planName}, assigned to assistant ${randomAssistant._id}`);
+    console.log(
+      `Subscription activated for user ${userId} with plan ${planName}, assigned to assistant ${randomAssistant._id}`
+    );
 
     res.status(200).json(result);
-
   } catch (error) {
     console.error("Error activating subscription:", error);
-    
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: "Validation error",
-        errors: Object.values(error.errors).map(err => err.message)
+
+    if (error.type === "StripeInvalidRequestError") {
+      return res.status(400).json({
+        message: "Invalid Stripe session ID",
+        error: error.message,
       });
     }
-    
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: Object.values(error.errors).map((err) => err.message),
+      });
+    }
+
     if (error.message === "User not found") {
       return res.status(404).json({ message: "User not found." });
     }
-    
-    res.status(500).json({ 
-      message: "Server error while activating subscription" 
+
+    res.status(500).json({
+      message: "Server error while activating subscription",
     });
   }
 });
