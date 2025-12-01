@@ -69,6 +69,11 @@ router.get("/", async (req, res) => {
         path: "messages",
         model: Message,
         options: { sort: { createdAt: -1 } },
+        populate: {
+          path: "userId", // Populate only the userId field
+          model: User,
+          select: "firstname lastname email", // Select only the fields you need
+        },
       })
       .exec(); // Execute the query
 

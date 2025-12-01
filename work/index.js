@@ -9,6 +9,7 @@ import reset from "./routes/reset.js";
 import newJob from "./routes/newJob.js";
 import getClientJobsRoutes from "./routes/clientJob.js";
 import updateJobStatusRoutes from "./routes/editJob.js";
+import createConv from "./routes/createConv.js";
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use("/reset", reset);
 router.use("/newJob", newJob);
 router.use("/getClientJobs", getClientJobsRoutes); // New route
 router.use("/updateJobStatus", updateJobStatusRoutes);
+router.use("/createConv", createConv);
 
 export default router;

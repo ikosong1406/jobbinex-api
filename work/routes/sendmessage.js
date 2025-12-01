@@ -3,11 +3,10 @@ import { Message } from "../../customer/models/message.schema.js";
 
 const router = express.Router();
 
-router.post("/:messageId", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
-    const { messageId } = req.params;
     // Destructure the expected payload from the client
-    const { role, content } = req.body;
+    const { messageId, role, content } = req.body;
 
     // 1. Basic Validation
     if (!role || !content) {
