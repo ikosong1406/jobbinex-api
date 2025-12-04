@@ -11,6 +11,7 @@ import profile from "./routes/profile.js";
 import checkout from "./routes/checkout.js";
 import subscribe from "./routes/subscribe.js";
 import createConv from "./routes/createConv.js";
+import createPayment from "./routes/createPayment.js";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use("/profile", profile);
 router.use("/checkout", checkout);
 router.use("/subscribe", subscribe);
 router.use("/createConv", createConv);
+router.use("/createPayment", createPayment);
 
 export default router;

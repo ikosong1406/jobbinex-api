@@ -8,7 +8,7 @@ import { User } from "../models/user.schema.js";
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+const CLIENT_URL = process.env.CLIENT_URL || "https://app.jobbinex.com";
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
@@ -110,7 +110,7 @@ router.post("/", async (req, res) => {
       mode: "payment",
 
       // The rest of the URLs and metadata remain helpful
-      success_url: `${CLIENT_URL}/customer/activate?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${CLIENT_URL}/customer/profile?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${CLIENT_URL}/customer/profile?canceled=true`,
       customer_email: user.email,
       client_reference_id: userId.toString(),
@@ -123,9 +123,11 @@ router.post("/", async (req, res) => {
       // Removed: subscription_data field
     });
 
+    console.log(session);
+
     res.status(200).json({
       sessionId: session.id,
-      redirectUrl: session.url, // Useful if the client needs to redirect manually
+      redirectUrl: session.url,
       message: "Checkout session created successfully",
     });
   } catch (error) {
