@@ -9,7 +9,7 @@ import verify from "./routes/verify.js";
 import reset from "./routes/reset.js";
 import profile from "./routes/profile.js";
 import checkout from "./routes/checkout.js";
-import subscribe from "./routes/subscribe.js";
+import activate from "./routes/activate.js";
 import createConv from "./routes/createConv.js";
 import createPayment from "./routes/createPayment.js";
 
@@ -25,7 +25,7 @@ router.use("/verify", verify);
 router.use("/reset", reset);
 router.use("/profile", profile);
 router.use("/checkout", checkout);
-router.use("/subscribe", subscribe);
+router.use("/activate", activate);
 router.use("/createConv", createConv);
 router.use("/createPayment", createPayment);
 

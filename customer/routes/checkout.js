@@ -14,39 +14,25 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
 
-// NOTE: We are now using price_data for one-time payments.
-// If you create a product and price in the Stripe dashboard for one-time payments,
-// you can replace price_data with the price ID (e.g., price: 'price_xxxxxxxxxxxxxx').
 const PLANS = {
   Starter: {
     price_data: {
       currency: "gbp",
-      unit_amount: 4999,
+      unit_amount: 5999,
       // unit_amount: 100,
       product_data: {
         name: "Starter One-Time Access",
         description: "One-time fee for Starter benefits.",
       },
-      // Removed: recurring property
     },
   },
   Professional: {
     price_data: {
       currency: "gbp",
-      unit_amount: 9999, // £99.99
+      unit_amount: 12999, // £129.99
       product_data: {
         name: "Professional One-Time Access",
         description: "One-time fee for Professional benefits.",
-      },
-    },
-  },
-  Elite: {
-    price_data: {
-      currency: "gbp",
-      unit_amount: 24999, // £249.99
-      product_data: {
-        name: "Elite One-Time Access",
-        description: "One-time fee for Elite benefits.",
       },
     },
   },
@@ -110,8 +96,8 @@ router.post("/", async (req, res) => {
       mode: "payment",
 
       // The rest of the URLs and metadata remain helpful
-      success_url: `${CLIENT_URL}/customer/profile?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${CLIENT_URL}/customer/profile?canceled=true`,
+      success_url: `${CLIENT_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${CLIENT_URL}/cancel`,
       customer_email: user.email,
       client_reference_id: userId.toString(),
       metadata: {

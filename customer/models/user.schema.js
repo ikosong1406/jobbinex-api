@@ -84,6 +84,10 @@ const userSchema = new Schema(
     ],
 
     // 4. Job-Specific Credentials (Stored encrypted in production!)
+    jobProvider: {
+      type: String,
+      default: null,
+    },
     jobEmail: {
       type: String,
       lowercase: true,
@@ -116,7 +120,7 @@ const userSchema = new Schema(
   {
     // Mongoose will automatically manage 'createdAt' and 'updatedAt' fields
     timestamps: true,
-  }
+  },
 );
 
 // Export the Mongoose Model using ES module syntax

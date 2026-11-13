@@ -38,6 +38,7 @@ router.patch("/", async (req, res) => {
 
   try {
     const {
+      jobProvider,
       jobEmail,
       jobPassword,
       cv,
@@ -59,6 +60,7 @@ router.patch("/", async (req, res) => {
     // Create update object with proper string handling
     const updateFields = {};
 
+    if (jobProvider !== undefined) updateFields.jobProvider = jobProvider;
     if (jobEmail !== undefined) updateFields.jobEmail = jobEmail;
     if (jobPassword !== undefined) updateFields.jobPassword = jobPassword;
     if (cv !== undefined) updateFields.cv = cv;
