@@ -109,8 +109,6 @@ router.post("/", async (req, res) => {
       // Removed: subscription_data field
     });
 
-    console.log(session);
-
     res.status(200).json({
       sessionId: session.id,
       redirectUrl: session.url,

@@ -1,11 +1,9 @@
-
 import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
 import jwt from "jsonwebtoken";
 import Stripe from "stripe";
-import mongoose from "mongoose";
 
 import { User } from "../models/user.schema.js";
 import { Assistant } from "../../work/models/assistant.schema.js";
@@ -26,7 +24,7 @@ router.post("/", async (req, res) => {
   // JWT Authentication
   if (
     req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer ")
+    req.headers.authorization.startsWith("Bearer")
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
@@ -101,8 +99,8 @@ router.post("/", async (req, res) => {
 
     // Verify expected amount and currency
     const expectedAmounts = {
-      Starter: 4999,
-      Professional: 9999,
+      Starter: 5999,
+      Professional: 12999,
     };
 
     if (
@@ -152,9 +150,9 @@ router.post("/", async (req, res) => {
 
       // Reuse existing assistant if user already has one
       if (user.assistant) {
-        assignedAssistant = await Assistant.findById(
-          user.assistant
-        ).session(mongoSession);
+        assignedAssistant = await Assistant.findById(user.assistant).session(
+          mongoSession,
+        );
       }
 
       // Assign a new assistant only if user doesn't have one
@@ -162,10 +160,7 @@ router.post("/", async (req, res) => {
         // Find assistants with fewer than 10 clients
         const availableAssistants = await Assistant.find({
           $expr: {
-            $lt: [
-              { $size: { $ifNull: ["$clients", []] } },
-              10,
-            ],
+            $lt: [{ $size: { $ifNull: ["$clients", []] } }, 10],
           },
         })
           .select("_id clients firstname lastname specialization")
@@ -173,7 +168,7 @@ router.post("/", async (req, res) => {
 
         if (availableAssistants.length === 0) {
           const error = new Error(
-            "No assistants available at the moment. Please try again later."
+            "No assistants available at the moment. Please try again later.",
           );
           error.statusCode = 503;
           throw error;
@@ -193,7 +188,7 @@ router.post("/", async (req, res) => {
               clients: user._id,
             },
           },
-          { session: mongoSession }
+          { session: mongoSession },
         );
 
         user.assistant = assignedAssistant._id;
@@ -224,11 +219,10 @@ router.post("/", async (req, res) => {
     });
 
     console.log(
-      `Subscription activated for user ${userId}, plan ${stripeSession.metadata.planName}`
+      `Subscription activated for user ${userId}, plan ${stripeSession.metadata.planName}`,
     );
 
     return res.status(200).json(result);
-
   } catch (error) {
     console.error("Error activating subscription:", error);
 
@@ -246,10 +240,8 @@ router.post("/", async (req, res) => {
     }
 
     return res.status(error.statusCode || 500).json({
-      message:
-        error.message || "Server error while activating subscription.",
+      message: error.message || "Server error while activating subscription.",
     });
-
   } finally {
     mongoSession.endSession();
   }
