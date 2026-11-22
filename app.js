@@ -4,9 +4,9 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import http from "http"; // Add this import
-import customer from "./customer/index.js";
-import work from "./work/index.js";
-import admin from "./admin/index.js";
+import customer from "./routes/customer/index.js";
+import work from "./routes/work/index.js";
+import admin from "./routes/admin/index.js";
 
 const app = express();
 app.use(express.json());

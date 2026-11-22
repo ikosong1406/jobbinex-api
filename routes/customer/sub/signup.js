@@ -5,7 +5,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 // Adjust the path to your User model as necessary
 import { User } from "../../../models/user.schema.js";
-import { Assistant } from "../../..user.schema.js";
+import { Assistant } from "../../../models/assistant.schema.js"; // Adjust the path to your Assistant model as necessary
 
 // --- IMPORT 1: The core Nodemailer utility ---
 import { sendMail } from "../../../utils/mail.js";
