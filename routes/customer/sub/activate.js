@@ -8,6 +8,10 @@ import Stripe from "stripe";
 import { User } from "../../../models/user.schema.js";
 import { Assistant } from "../../../models/assistant.schema.js";
 
+// --- IMPORT: Email utilities ---
+import { sendMail } from "../../../utils/mail.js";
+import EmailTemplate from "../../../templates/emailTemplate.js";
+
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -114,6 +118,7 @@ router.post("/", async (req, res) => {
 
     // Start transaction
     let result;
+    let emailData = null; // captured inside the transaction, sent after commit
 
     await mongoSession.withTransaction(async () => {
       const user = await User.findById(userId).session(mongoSession);
@@ -206,6 +211,20 @@ router.post("/", async (req, res) => {
 
       await user.save({ session: mongoSession });
 
+      // Capture data needed for the confirmation email (sent after commit)
+      emailData = {
+        email: user.email,
+        firstname: user.firstname,
+        planName,
+        // Format amount in GBP (Stripe stores in pence)
+        amountPaid: `£${(stripeSession.amount_total / 100).toFixed(2)}`,
+        expiresAt: expiresAt.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+      };
+
       result = {
         message: "Subscription activated successfully.",
         user: user.toObject(),
@@ -217,6 +236,34 @@ router.post("/", async (req, res) => {
         },
       };
     });
+
+    // --- SEND CONFIRMATION EMAIL (after transaction commits) ---
+    // Skip if this was a duplicate activation (result.message check)
+    if (emailData && result?.message === "Subscription activated successfully.") {
+      try {
+        const emailHtml = EmailTemplate({
+          type: "subscription",
+          firstname: emailData.firstname || "there",
+          planName: emailData.planName,
+          amountPaid: emailData.amountPaid,
+          expiresAt: emailData.expiresAt,
+          actionUrl: process.env.FRONTEND_URL,
+        });
+
+        await sendMail(
+          emailData.email,
+          `Your Jobbinex ${emailData.planName} Plan is Active`,
+          "", // Plain text fallback
+          emailHtml
+        );
+      } catch (mailError) {
+        // Log but never fail the request — the subscription is already active
+        console.error(
+          `Failed to send subscription email to ${emailData.email}:`,
+          mailError.message
+        );
+      }
+    }
 
     console.log(
       `Subscription activated for user ${userId}, plan ${stripeSession.metadata.planName}`,

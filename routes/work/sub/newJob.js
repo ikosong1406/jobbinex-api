@@ -11,7 +11,8 @@ import { Assistant } from "../../../models/assistant.schema.js";
 
 // Import email utilities
 import { sendMail } from "../../../utils/mail.js";
-import NewApplication from "../../../templates/newJob.js";
+// --- IMPORT: The unified email template factory function ---
+import EmailTemplate from "../../../templates/emailTemplate.js";
 
 dotenv.config();
 const router = express.Router();
@@ -125,14 +126,24 @@ router.post("/", protect, async (req, res) => {
     // Determine if the user is on the Free plan to conditionally show the subscribe CTA
     const isFreePlan = client.plan?.name === "Free";
 
+    // Generate the email HTML using the unified template
+    const emailHtml = EmailTemplate({
+      type: "newJob",
+      firstname: client.firstname || "there",
+      jobTitle: title,
+      company: company,
+      isFreePlan: isFreePlan,
+      actionUrl: process.env.FRONTEND_URL,
+    });
+
     // Fire-and-forget: don't block the response on email delivery.
     // Wrap in try/catch so a mail failure never breaks the API response.
     try {
       await sendMail(
         client.email,
         `New Application: ${title} at ${company}`,
-        "",
-        NewApplication(client.firstname, title, company, isFreePlan)
+        "", // Plain text fallback
+        emailHtml
       );
     } catch (mailError) {
       // Log but do not fail the request — the job was still created successfully

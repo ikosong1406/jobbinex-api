@@ -9,8 +9,8 @@ import { Assistant } from "../../../models/assistant.schema.js"; // Adjust the p
 
 // --- IMPORT 1: The core Nodemailer utility ---
 import { sendMail } from "../../../utils/mail.js";
-// --- IMPORT 2: The email template factory function ---
-import Welcome from "../../../templates/welcomeTemplate.js";
+// --- IMPORT 2: The unified email template factory function ---
+import EmailTemplate from "../../../templates/emailTemplate.js"; // <-- UPDATED IMPORT
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -94,15 +94,31 @@ router.post("/", async (req, res) => {
     const userResponse = newUser.toObject();
     delete userResponse.password;
 
-    // --- EXECUTE EMAIL SENDING ---
-    sendMail(
-      newUser.email,
-      "Welcome to Jobbinex",
-      "",
-      Welcome(newUser.firstname),
-    );
+    // --- EXECUTE EMAIL SENDING (ISOLATED) ---
+    try {
+      // Generate the welcome email HTML using the new template
+      const welcomeHtml = EmailTemplate({
+        type: 'welcome',
+        firstname: newUser.firstname,
+        actionUrl: process.env.FRONTEND_URL
+      });
 
-    // 2. Send Response
+      // Attempt to send the email
+      // Note: If your sendMail function is async, you can `await` it here. 
+      // If you want it to be non-blocking (fire-and-forget), you can omit the await.
+      await sendMail(
+        newUser.email,
+        "Welcome to Jobbinex",
+        "", // Plain text fallback
+        welcomeHtml,
+      );
+    } catch (emailError) {
+      // Log the email failure but DO NOT throw or return an error to the client.
+      // The account was already created successfully.
+      console.error(`Failed to send welcome email to ${newUser.email}:`, emailError.message);
+    }
+
+    // 2. Send Response (This will execute regardless of whether the email sent successfully)
     res.status(201).json({
       token,
       message: "Account created successfully. Welcome email sent!",

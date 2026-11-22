@@ -13,13 +13,9 @@ import createConv from "./sub/createConv.js";
 
 const router = Router();
 
-router.use("/signup", signup);
 router.use("/login", login);
 router.use("/userdata", userdata);
 router.use("/sendMessage", sendMessage);
-router.use("/forgot", forgot);
-router.use("/verify", verify);
-router.use("/reset", reset);
 router.use("/newJob", newJob);
 router.use("/getClientJobs", getClientJobsRoutes); // New route
 router.use("/updateJobStatus", updateJobStatusRoutes);

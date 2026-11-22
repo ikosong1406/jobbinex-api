@@ -2,7 +2,8 @@ import express from "express";
 import { User } from "../../../models/user.schema.js";
 // Assuming you have a utility for sending emails, e.g., sendEmail
 import { sendMail } from "../../../utils/mail.js";
-import Reset from "../../../templates/forgotTemplate.js";
+// --- IMPORT: The unified email template factory function ---
+import EmailTemplate from "../../../templates/emailTemplate.js";
 
 const router = express.Router();
 
@@ -32,10 +33,29 @@ router.post("/", async (req, res) => {
     user.resetCodeExpires = Date.now() + 600000; // 10 minutes from now
     await user.save();
 
-    // 3. Send the email (Implementation assumed in utils/emailService.js)
-    const emailHtml = Reset(user.firstname || "User", resetCode);
+    // 3. Generate the reset email HTML using the unified template
+    const emailHtml = EmailTemplate({
+      type: "resetPassword",
+      firstname: user.firstname || "User",
+      resetCode: resetCode,
+      actionUrl: process.env.CLIENT_URL,
+    });
 
-    sendMail(user.email, "Password Reset Code - Jobbinex", "", emailHtml);
+    // 4. Send the email (isolated so a mail failure doesn't crash the request)
+    try {
+      await sendMail(
+        user.email,
+        "Password Reset Code - Jobbinex",
+        "", // Plain text fallback
+        emailHtml
+      );
+    } catch (emailError) {
+      // Log the failure but don't block the response — the code is already saved
+      console.error(
+        `Failed to send reset email to ${user.email}:`,
+        emailError.message
+      );
+    }
 
     res
       .status(200)
