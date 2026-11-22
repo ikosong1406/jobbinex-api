@@ -33,6 +33,10 @@ const userSchema = new Schema(
       maxlength: 20,
       default: null,
     },
+    claimedFree: {
+      type: Boolean,
+      default: false,
+    },
     resetCode: {
       type: String,
       default: null,
@@ -46,10 +50,13 @@ const userSchema = new Schema(
     plan: {
       name: {
         type: String,
-        enum: ["Starter", "Professional", "Elite"], // Example plan names
+        enum: ["Free", "Starter", "Professional", "Elite"],
+        default: "Free",
+        required: true,
       },
       expiresAt: {
         type: Date,
+        default: null,
       },
     },
 

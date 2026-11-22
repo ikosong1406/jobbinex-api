@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 // Adjust the path to your User model as necessary
 import { User } from "../models/user.schema.js";
+import { Assistant } from "../../work/models/assistant.schema.js";
 
 // --- IMPORT 1: The core Nodemailer utility ---
 import { sendMail } from "../../utils/mail.js";
@@ -42,7 +43,43 @@ router.post("/", async (req, res) => {
       email: email.toLowerCase(),
       phonenumber,
       password: hashedPassword,
+      // Default plan on signup
+      plan: {
+        name: "Free",
+        expiresAt: null, // Free plan doesn't expire
+      },
     });
+
+    // Assign an assistant upon signup (reuse subscription logic)
+    let assignedAssistant = null;
+
+    // Find assistants with fewer than 10 clients
+    const availableAssistants = await Assistant.find({
+      $expr: {
+        $lt: [{ $size: { $ifNull: ["$clients", []] } }, 10],
+      },
+    }).select("_id clients firstname lastname specialization");
+
+    if (availableAssistants.length > 0) {
+      // Random assistant selection
+      assignedAssistant =
+        availableAssistants[
+          Math.floor(Math.random() * availableAssistants.length)
+        ];
+
+      // Add user to assistant's clients
+      await Assistant.updateOne(
+        { _id: assignedAssistant._id },
+        { $addToSet: { clients: newUser._id } },
+      );
+
+      newUser.assistant = assignedAssistant._id;
+    } else {
+      // No assistant available — user still signs up, just without one for now
+      console.warn(
+        `No assistants available to assign to new user ${newUser.email}`,
+      );
+    }
 
     await newUser.save();
 
@@ -62,13 +99,12 @@ router.post("/", async (req, res) => {
       newUser.email,
       "Welcome to Jobbinex",
       "",
-      Welcome(newUser.firstname)
+      Welcome(newUser.firstname),
     );
 
     // 2. Send Response
     res.status(201).json({
       token,
-      user: userResponse,
       message: "Account created successfully. Welcome email sent!",
     });
   } catch (error) {

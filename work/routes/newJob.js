@@ -1,13 +1,17 @@
-// --- File: src/routes/jobRoutes.js (Example Path) ---
+// --- File: src/routes/jobRoutes.js ---
 
 import express from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
 // Import Models
-import { User } from "../../customer/models/user.schema.js"; // Your Client Model
+import { User } from "../../customer/models/user.schema.js";
 import { Job } from "../../customer/models/job.schema.js";
-import { Assistant } from "../models/assistant.schema.js"; // Your Assistant/User Model
+import { Assistant } from "../models/assistant.schema.js";
+
+// Import email utilities
+import { sendMail } from "../../utils/mail.js";
+import NewApplication from "../../customer/templates/newJob.js";
 
 dotenv.config();
 const router = express.Router();
@@ -24,7 +28,7 @@ const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, JWT_SECRET);
-      req.assistantId = decoded.id; // Retrieve and attach the assistant user to the request
+      req.assistantId = decoded.id;
 
       req.assistant = await Assistant.findById(req.assistantId).select(
         "-password -jobs -notifications -messages"
@@ -52,22 +56,21 @@ const protect = async (req, res, next) => {
 };
 
 // --- 🚀 POST / (Creates a new job application) ---
-// This route is responsible for logging a new job application for a specific client.
 router.post("/", protect, async (req, res) => {
   const {
-    client: clientId, // The client's _id (User model)
+    client: clientId,
     title,
     company,
     jobUrl,
     appliedDate,
     notes,
-    status, // --- NEW JOB SCHEMA FIELDS ADDED ---
+    status,
     location,
-    description, // Required by schema
+    description,
     jobType,
-    requiredSkills, // Expected as an array from the frontend
-    salaryRange, // Expected as { min: number, max: number, currency: string } // -------------------------------------
-  } = req.body; // 1. Basic Validation (Updated to include 'description' which is required by the schema)
+    requiredSkills,
+    salaryRange,
+  } = req.body;
 
   if (!clientId || !title || !company) {
     return res.status(400).json({
@@ -81,7 +84,7 @@ router.post("/", protect, async (req, res) => {
     const client = await User.findById(clientId);
     if (!client) {
       return res.status(404).json({ message: "Client not found." });
-    } // Ensure the client is managed by the logged-in assistant
+    }
 
     const isClientManaged = req.assistant.clients.some(
       (c) => c.toString() === clientId
@@ -91,27 +94,25 @@ router.post("/", protect, async (req, res) => {
       return res.status(403).json({
         message: "Unauthorized: Client is not linked to your account.",
       });
-    } // 3. Create the New Job Application
+    }
 
+    // 3. Create the New Job Application
     const newJob = await Job.create({
-      // Core Information
       title,
       company,
-      jobUrl, // Optional URL
-      description, // Required
-      jobSource: "Manual Entry", // Status & History
-
+      jobUrl,
+      description,
+      jobSource: "Manual Entry",
       appliedDate: appliedDate ? new Date(appliedDate) : new Date(),
       status: status || "Pending",
-      notes, // Max 2000 chars // Technical and Financial Details
-
+      notes,
       location,
       jobType,
-      requiredSkills, // Array of strings // Conditional Salary Range (Mongoose handles the nested object structure)
+      requiredSkills,
       ...(salaryRange && { salaryRange }),
-    }); // 4. Link the Job to the Client (User)
+    });
 
-    // --- Ensure arrays exist before pushing ---
+    // 4. Link the Job to the Client (User)
     if (!client.jobs) client.jobs = [];
     client.jobs.push(newJob._id);
     await client.save();
@@ -120,15 +121,35 @@ router.post("/", protect, async (req, res) => {
     req.assistant.jobs.push(newJob._id);
     await req.assistant.save();
 
+    // 5. Send email notification to the client
+    // Determine if the user is on the Free plan to conditionally show the subscribe CTA
+    const isFreePlan = client.plan?.name === "Free";
+
+    // Fire-and-forget: don't block the response on email delivery.
+    // Wrap in try/catch so a mail failure never breaks the API response.
+    try {
+      await sendMail(
+        client.email,
+        `New Application: ${title} at ${company}`,
+        "",
+        NewApplication(client.firstname, title, company, isFreePlan)
+      );
+    } catch (mailError) {
+      // Log but do not fail the request — the job was still created successfully
+      console.error(
+        `Failed to send new-application email to ${client.email}:`,
+        mailError.message
+      );
+    }
+
     res.status(201).json({
       message: "Job application logged successfully.",
       job: newJob,
     });
   } catch (error) {
-    console.error("Error creating job application:", error); // Handle specific Mongoose validation errors
+    console.error("Error creating job application:", error);
 
     if (error.name === "ValidationError") {
-      // Map error messages from Mongoose validation object
       const messages = Object.values(error.errors).map((val) => val.message);
       return res
         .status(400)
