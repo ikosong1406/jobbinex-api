@@ -33,9 +33,16 @@ const userSchema = new Schema(
       maxlength: 20,
       default: null,
     },
+    balance: {
+      type: Number,
+      default: 0,
+    },
     claimedFree: {
       type: Boolean,
       default: false,
+    },
+    referralCode: {
+      type: String,
     },
     resetCode: {
       type: String,
