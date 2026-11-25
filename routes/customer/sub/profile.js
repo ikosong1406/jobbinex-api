@@ -15,10 +15,10 @@ router.patch("/", async (req, res) => {
   // --- JWT Verification (In-Route Middleware Logic) ---
   if (
     req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
+    req.headers.authorization.startsWith("Bearer ")
   ) {
     try {
-      token = req.headers.authorization.split(" ")[1];
+      token = req.headers.authorization.slice(7).trim();
       const decoded = jwt.verify(token, JWT_SECRET);
       userId = decoded.id; // Extract user ID
     } catch (error) {
@@ -42,62 +42,70 @@ router.patch("/", async (req, res) => {
       jobEmail,
       jobPassword,
       cv,
-      preferredIndustries, // Keep the old field name from frontend
-      preferredRoles, // Keep the old field name from frontend
-      preferredLocations, // Keep the old field name from frontend
-      phonenumber,
-    } = req.body;
-
-    console.log("Received update data:", {
       preferredIndustries,
       preferredRoles,
       preferredLocations,
-      jobEmail,
-      jobPassword,
-      cv,
-    });
+      phonenumber,
+    } = req.body;
 
-    // Create update object with proper string handling
     const updateFields = {};
 
     if (jobProvider !== undefined) updateFields.jobProvider = jobProvider;
     if (jobEmail !== undefined) updateFields.jobEmail = jobEmail;
     if (jobPassword !== undefined) updateFields.jobPassword = jobPassword;
     if (cv !== undefined) updateFields.cv = cv;
-
-    // Handle string fields - map frontend field names to schema field names
-    if (preferredIndustries !== undefined) {
-      updateFields.preferredIndustries =
-        typeof preferredIndustries === "string"
-          ? preferredIndustries.trim()
-          : "";
-    }
-
-    if (preferredRoles !== undefined) {
-      updateFields.preferredRoles =
-        typeof preferredRoles === "string" ? preferredRoles.trim() : "";
-    }
-
-    if (preferredLocations !== undefined) {
-      updateFields.preferredLocations =
-        typeof preferredLocations === "string" ? preferredLocations.trim() : "";
-    }
-
     if (phonenumber !== undefined) updateFields.phonenumber = phonenumber;
 
-    // Check if there are any fields to update
+    // ── ARRAY FIELDS ────────────────────────────────────────────
+    // Accept arrays, comma-separated strings, or single values,
+    // and always store a clean, de-duplicated array of trimmed strings.
+    const toCleanArray = (value) => {
+      if (value === undefined) return undefined;
+
+      if (Array.isArray(value)) {
+        return [
+          ...new Set(
+            value
+              .filter((v) => typeof v === "string" || typeof v === "number")
+              .map((v) => String(v).trim())
+              .filter(Boolean),
+          ),
+        ];
+      }
+
+      if (typeof value === "string") {
+        return [
+          ...new Set(
+            value
+              .split(",")
+              .map((v) => v.trim())
+              .filter(Boolean),
+          ),
+        ];
+      }
+
+      // Reject anything else (objects, numbers-as-single, etc.)
+      return undefined;
+    };
+
+    const industries = toCleanArray(preferredIndustries);
+    if (industries !== undefined) updateFields.preferredIndustries = industries;
+
+    const roles = toCleanArray(preferredRoles);
+    if (roles !== undefined) updateFields.preferredRoles = roles;
+
+    const locations = toCleanArray(preferredLocations);
+    if (locations !== undefined) updateFields.preferredLocations = locations;
+    // ────────────────────────────────────────────────────────────
+
     if (Object.keys(updateFields).length === 0) {
       return res.status(400).json({ message: "No fields to update." });
     }
 
-    // Find and update the user
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updateFields },
-      {
-        new: true,
-        runValidators: true,
-      }
+      { new: true, runValidators: true },
     )
       .select("-password")
       .exec();
@@ -113,7 +121,6 @@ router.patch("/", async (req, res) => {
   } catch (error) {
     console.error("Error updating user profile:", error);
 
-    // More detailed error logging
     if (error.name === "ValidationError") {
       console.error("Validation errors:", error.errors);
       return res.status(400).json({
@@ -130,7 +137,7 @@ router.patch("/", async (req, res) => {
 
     res.status(500).json({
       message: "Server error while updating profile",
-      error: error.message, // Include error message for debugging
+      error: error.message,
     });
   }
 });
