@@ -12,6 +12,7 @@ import checkout from "./sub/checkout.js";
 import activate from "./sub/activate.js";
 import createConv from "./sub/createConv.js";
 import createPayment from "./sub/createPayment.js";
+import claim from "./sub/claim.js";
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use("/checkout", checkout);
 router.use("/activate", activate);
 router.use("/createConv", createConv);
 router.use("/createPayment", createPayment);
+router.use("/claim", claim);
 
 export default router;

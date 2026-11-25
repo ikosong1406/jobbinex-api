@@ -112,16 +112,16 @@ const userSchema = new Schema(
       default: null,
     },
     preferredIndustries: {
-      type: String, // **NOW A SINGLE STRING**
-      default: null, // **SET DEFAULT TO NULL**
+      type: [String],
+      default: [],
     },
     preferredRoles: {
-      type: String, // **NOW A SINGLE STRING**
-      default: null, // **SET DEFAULT TO NULL**
+      type: [String],
+      default: [],
     },
     preferredLocations: {
-      type: String, // **NOW A SINGLE STRING**
-      default: null, // **SET DEFAULT TO NULL**
+      type: [String],
+      default: [],
     },
   },
   {
